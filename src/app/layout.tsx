@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.scss";
 import { Toaster } from "@/components/ui/toaster";
 import { ThemeProvider } from "./providers/ThemeProvider";
+import DevTierToggle from "@/components/dev/DevTierToggle";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -27,6 +28,7 @@ export default function RootLayout({
         >
           {children}
           <Toaster />
+          {process.env.NODE_ENV !== 'production' && <DevTierToggle />}
         </ThemeProvider>
       </body>
     </html>

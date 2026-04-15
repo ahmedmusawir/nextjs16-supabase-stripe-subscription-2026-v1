@@ -14,7 +14,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { safeRedirect } from "@/lib/safeRedirect";
 import {
   Card,
   CardContent,
@@ -53,6 +54,8 @@ const RegisterForm = () => {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const safeNext = safeRedirect(searchParams.get('next'));
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -83,7 +86,7 @@ const RegisterForm = () => {
 
     if (response.ok) {
       router.refresh();
-      router.push("/members-portal");
+      router.push(safeNext ?? "/members-portal");
     } else {
       const result = await response.json();
       setError(result.error);

@@ -14,7 +14,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import Spinner from "@/components/common/Spinner";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { safeRedirect } from "@/lib/safeRedirect";
 import {
   Card,
   CardContent,
@@ -44,6 +45,8 @@ const LoginForm = () => {
   const [isLoading, setIsLoading] = useState(false);
   const login = useAuthStore((state) => state.login);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const safeNext = safeRedirect(searchParams.get('next'));
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -67,7 +70,7 @@ const LoginForm = () => {
     if (!redirectPath) return;
 
     router.refresh();
-    router.push(redirectPath);
+    router.push(safeNext ?? redirectPath);
   };
 
   return (

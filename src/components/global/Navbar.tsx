@@ -14,6 +14,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import ThemeToggler from "./ThemeToggler";
 import Logout from "../auth/Logout";
+import { TierBadge } from "@/components/common/TierBadge";
+import {
+  useDevSubscriptionStore,
+  selectMockTier,
+} from "@/store/useDevSubscriptionStore";
 import { User as SupabaseUser } from "@supabase/auth-js";
 import { createClient } from "@/utils/supabase/client";
 import { usePathname } from "next/navigation";
@@ -23,6 +28,7 @@ const Navbar = () => {
   const [isLoading, setIsLoading] = useState(true);
   const supabase = createClient();
   const pathname = usePathname();
+  const mockTier = useDevSubscriptionStore(selectMockTier);
 
   interface NavLinkProps {
     href: string;
@@ -85,9 +91,8 @@ const Navbar = () => {
 
       {/* NAVIGATION */}
       <nav className="hidden sm:ml-6 sm:flex flex-grow justify-center items-center">
-        <NavLink href="/booking">Booking</NavLink>
-        {/* <NavLink href="/loading-example">Suspension Test</NavLink> */}
-        <NavLink href="/xxx">Global 404</NavLink>
+        <NavLink href="/articles">Articles</NavLink>
+        <NavLink href="/pricing">Pricing</NavLink>
       </nav>
 
       {/* DARK MODE BUTTON */}
@@ -96,7 +101,12 @@ const Navbar = () => {
 
         {!isLoading && (
           <>
-            {user && <span className="mr-3 text-white">{user.email}</span>}
+            {user && (
+              <div className="flex items-center gap-2 mr-3">
+                <span className="text-white">{user.email}</span>
+                <TierBadge tier={mockTier} />
+              </div>
+            )}
 
             {user && (
               <DropdownMenu>
