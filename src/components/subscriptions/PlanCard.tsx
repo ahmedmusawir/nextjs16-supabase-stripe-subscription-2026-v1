@@ -83,9 +83,10 @@ export function PlanCard({ plan, next }: PlanCardProps) {
           disabled={isLoading}
           variant={plan.highlighted ? 'default' : 'outline'}
           className={cn(
-            'w-full',
-            plan.highlighted &&
-              'bg-violet-600 hover:bg-violet-700 text-white'
+            'w-full border',
+            plan.highlighted
+              ? 'bg-violet-600 hover:bg-violet-700 text-white border-violet-700 dark:bg-violet-500 dark:hover:bg-violet-600 dark:border-violet-400'
+              : 'border-violet-300 dark:border-violet-500 text-violet-600 dark:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-950'
           )}
         >
           {isLoading ? (

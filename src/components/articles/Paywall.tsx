@@ -40,7 +40,7 @@ export function Paywall({
           This is {tierDisplayName(required_tier)} content
         </h3>
         <p className="text-muted-foreground text-sm mb-6">{bodyText}</p>
-        <Button asChild className="w-full">
+        <Button asChild className="w-full bg-violet-600 hover:bg-violet-700 text-white border border-violet-700 dark:bg-violet-500 dark:hover:bg-violet-600 dark:border-violet-400">
           <Link href={ctaHref}>{ctaLabel}</Link>
         </Button>
       </div>
