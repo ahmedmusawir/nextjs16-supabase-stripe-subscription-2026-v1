@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
   Command,
   CommandEmpty,
@@ -21,11 +21,9 @@ import {
   Lock,
 } from "lucide-react";
 import Link from "next/link";
-import {
-  useDevSubscriptionStore,
-  selectMockTier,
-} from "@/store/useDevSubscriptionStore";
+import { createClient } from "@/utils/supabase/client";
 import { meetsTier } from "@/lib/tiers";
+import type { SubscriptionTier } from "@/types/subscription";
 
 const premiumItems = [
   {
@@ -49,7 +47,27 @@ const premiumItems = [
 ];
 
 const Sidebar = () => {
-  const currentTier = useDevSubscriptionStore(selectMockTier);
+  const [currentTier, setCurrentTier] = useState<SubscriptionTier>("free");
+
+  useEffect(() => {
+    const fetchTier = async () => {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data } = await supabase
+        .from("subscriptions")
+        .select("tier")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (data && data.tier) {
+        setCurrentTier(data.tier as SubscriptionTier);
+      }
+    };
+
+    fetchTier();
+  }, []);
 
   return (
     <Command className="bg-secondary">

@@ -32,11 +32,11 @@ const SubscribeSuccessContent = ({ next }: Props) => {
 
     const { data } = await supabase
       .from('subscriptions')
-      .select('tier, status')
+      .select('tier')
       .eq('user_id', user.id)
       .maybeSingle();
 
-    if (data && data.status === 'active' && data.tier !== 'free') {
+    if (data && data.tier && data.tier !== 'free') {
       setTier(data.tier as SubscriptionTier);
       setPageState('confirmed');
       return true;

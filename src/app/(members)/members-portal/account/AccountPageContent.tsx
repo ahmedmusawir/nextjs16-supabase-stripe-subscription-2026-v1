@@ -8,44 +8,59 @@ import { Button } from "@/components/ui/button";
 import { TierBadge } from "@/components/common/TierBadge";
 import { useToast } from "@/components/ui/use-toast";
 import Link from "next/link";
-import {
-  useDevSubscriptionStore,
-  selectMockTier,
-} from "@/store/useDevSubscriptionStore";
 import type { SubscriptionTier } from "@/types/subscription";
 import { createClient } from "@/utils/supabase/client";
 
 const AccountPageContent = () => {
   const { toast } = useToast();
-  const currentTier = useDevSubscriptionStore(selectMockTier);
+  const [currentTier, setCurrentTier] = useState<SubscriptionTier>("free");
   const [email, setEmail] = useState<string>("");
+  const [startedAt, setStartedAt] = useState<string | null>(null);
+  const [renewalDate, setRenewalDate] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const fetchUser = async () => {
+    const fetchData = async () => {
       const supabase = createClient();
       const { data } = await supabase.auth.getUser();
       setEmail(data.user?.email ?? "");
+
+      if (data.user) {
+        const { data: subRow } = await supabase
+          .from("subscriptions")
+          .select("tier, created_at, current_period_end")
+          .eq("user_id", data.user.id)
+          .maybeSingle();
+
+        if (subRow && subRow.tier) {
+          setCurrentTier(subRow.tier as SubscriptionTier);
+          if (subRow.created_at) {
+            setStartedAt(
+              new Date(subRow.created_at).toLocaleDateString("en-US", {
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+              })
+            );
+          }
+          if (subRow.current_period_end) {
+            setRenewalDate(
+              new Date(subRow.current_period_end).toLocaleDateString("en-US", {
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+              })
+            );
+          }
+        }
+      }
+
       setIsLoading(false);
     };
-    fetchUser();
+    fetchData();
   }, []);
 
   const isFree = currentTier === "free";
-  const startedAt = isFree
-    ? null
-    : new Date("2026-04-15T00:00:00Z").toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      });
-  const renewalDate = isFree
-    ? null
-    : new Date("2026-05-15T00:00:00Z").toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      });
 
   const handleManage = () => {
     toast({
@@ -100,14 +115,18 @@ const AccountPageContent = () => {
 
             {!isFree && (
               <>
-                <div className="flex justify-between items-center py-2 border-b dark:border-slate-700">
-                  <span className="text-sm text-muted-foreground">Started</span>
-                  <span className="text-sm font-medium">{startedAt}</span>
-                </div>
-                <div className="flex justify-between items-center py-2 border-b dark:border-slate-700">
-                  <span className="text-sm text-muted-foreground">Renews</span>
-                  <span className="text-sm font-medium">{renewalDate}</span>
-                </div>
+                {startedAt && (
+                  <div className="flex justify-between items-center py-2 border-b dark:border-slate-700">
+                    <span className="text-sm text-muted-foreground">Started</span>
+                    <span className="text-sm font-medium">{startedAt}</span>
+                  </div>
+                )}
+                {renewalDate && (
+                  <div className="flex justify-between items-center py-2 border-b dark:border-slate-700">
+                    <span className="text-sm text-muted-foreground">Renews</span>
+                    <span className="text-sm font-medium">{renewalDate}</span>
+                  </div>
+                )}
               </>
             )}
 

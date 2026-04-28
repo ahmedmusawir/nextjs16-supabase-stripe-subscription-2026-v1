@@ -1,18 +1,37 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Page from "@/components/common/Page";
 import Row from "@/components/common/Row";
 import Box from "@/components/common/Box";
 import { Button } from "@/components/ui/button";
 import { TierBadge } from "@/components/common/TierBadge";
 import Link from "next/link";
-import {
-  useDevSubscriptionStore,
-  selectMockTier,
-} from "@/store/useDevSubscriptionStore";
+import { createClient } from "@/utils/supabase/client";
+import type { SubscriptionTier } from "@/types/subscription";
 
 const MembersPortalContent = () => {
-  const currentTier = useDevSubscriptionStore(selectMockTier);
+  const [currentTier, setCurrentTier] = useState<SubscriptionTier>("free");
+
+  useEffect(() => {
+    const fetchTier = async () => {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data } = await supabase
+        .from("subscriptions")
+        .select("tier")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (data && data.tier) {
+        setCurrentTier(data.tier as SubscriptionTier);
+      }
+    };
+
+    fetchTier();
+  }, []);
   const isFree = currentTier === "free";
 
   return (

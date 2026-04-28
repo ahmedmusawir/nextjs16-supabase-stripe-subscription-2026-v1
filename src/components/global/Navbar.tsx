@@ -15,20 +15,17 @@ import {
 import ThemeToggler from "./ThemeToggler";
 import Logout from "../auth/Logout";
 import { TierBadge } from "@/components/common/TierBadge";
-import {
-  useDevSubscriptionStore,
-  selectMockTier,
-} from "@/store/useDevSubscriptionStore";
 import { User as SupabaseUser } from "@supabase/auth-js";
 import { createClient } from "@/utils/supabase/client";
 import { usePathname } from "next/navigation";
+import type { SubscriptionTier } from "@/types/subscription";
 
 const Navbar = () => {
   const [user, setUser] = useState<SupabaseUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [tier, setTier] = useState<SubscriptionTier>("free");
   const supabase = createClient();
   const pathname = usePathname();
-  const mockTier = useDevSubscriptionStore(selectMockTier);
 
   interface NavLinkProps {
     href: string;
@@ -58,6 +55,19 @@ const Navbar = () => {
       const { data } = await supabase.auth.getUser();
       setUser(data.user);
       setIsLoading(false);
+
+      // Fetch real subscription tier
+      if (data.user) {
+        const { data: subRow } = await supabase
+          .from("subscriptions")
+          .select("tier")
+          .eq("user_id", data.user.id)
+          .maybeSingle();
+
+        if (subRow && subRow.tier) {
+          setTier(subRow.tier as SubscriptionTier);
+        }
+      }
     };
 
     // Listen for auth changes
@@ -104,7 +114,7 @@ const Navbar = () => {
             {user && (
               <div className="flex items-center gap-2 mr-3">
                 <span className="text-white">{user.email}</span>
-                <TierBadge tier={mockTier} />
+                <TierBadge tier={tier} />
               </div>
             )}
 
