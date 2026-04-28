@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { Check, Loader2 } from 'lucide-react';
 import {
   Card,
@@ -11,7 +10,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { subscriptionService } from '@/services/subscriptionService';
+import { checkoutService } from '@/services/checkoutService';
 import type { Plan, SubscriptionTier } from '@/types/subscription';
 import { cn } from '@/lib/utils';
 
@@ -22,11 +21,10 @@ interface PlanCardProps {
 
 export function PlanCard({ plan, next }: PlanCardProps) {
   const [isLoading, setIsLoading] = useState(false);
-  const router = useRouter();
 
   const handleSubscribe = async () => {
     setIsLoading(true);
-    const result = await subscriptionService.subscribe(
+    const result = await checkoutService.subscribe(
       plan.tier as Exclude<SubscriptionTier, 'free'>
     );
 
@@ -34,7 +32,7 @@ export function PlanCard({ plan, next }: PlanCardProps) {
       ? `${result.redirect_url}${result.redirect_url.includes('?') ? '&' : '?'}next=${encodeURIComponent(next)}`
       : result.redirect_url;
 
-    router.push(url);
+    window.location.href = url;
   };
 
   return (

@@ -1,3 +1,4 @@
+import { safeRedirect } from "@/lib/safeRedirect";
 import SubscribeSuccessContent from "./SubscribeSuccessContent";
 
 interface Props {
@@ -5,7 +6,9 @@ interface Props {
 }
 
 const SubscribeSuccessPage = async ({ searchParams }: Props) => {
-  return <SubscribeSuccessContent searchParams={searchParams} />;
+  const params = await searchParams;
+  const next = safeRedirect(params.next ?? null);
+  return <SubscribeSuccessContent next={next} />;
 };
 
 export default SubscribeSuccessPage;

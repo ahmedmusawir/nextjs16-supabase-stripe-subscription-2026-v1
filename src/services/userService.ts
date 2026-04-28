@@ -1,43 +1,14 @@
 import type { User } from '@/types/user';
-import type { SubscriptionTier, Subscription } from '@/types/subscription';
-import { useDevSubscriptionStore } from '@/store/useDevSubscriptionStore';
+import type { Subscription, SubscriptionTier } from '@/types/subscription';
 import { createClient } from '@/utils/supabase/server';
 import { getUserRole } from '@/utils/get-user-role';
 
-function buildSubscription(tier: SubscriptionTier): Subscription {
-  if (tier === 'free') {
-    return {
-      tier: 'free',
-      status: 'none',
-      renewal_date: null,
-      started_at: null,
-    };
-  }
-  return {
-    tier,
-    status: 'active',
-    renewal_date: '2026-05-15T00:00:00Z',
-    started_at: '2026-04-15T00:00:00Z',
-  };
-}
-
-async function readMockTier(): Promise<SubscriptionTier> {
-  if (typeof window === 'undefined') {
-    const { cookies } = await import('next/headers');
-    const cookieStore = await cookies();
-    const cookieValue = cookieStore.get('dev_mock_tier')?.value;
-    if (
-      cookieValue === 'free' ||
-      cookieValue === 'starter' ||
-      cookieValue === 'pro' ||
-      cookieValue === 'enterprise'
-    ) {
-      return cookieValue;
-    }
-    return 'free';
-  }
-  return useDevSubscriptionStore.getState().mockTier;
-}
+const FREE_SUBSCRIPTION: Subscription = {
+  tier: 'free',
+  status: 'none',
+  renewal_date: null,
+  started_at: null,
+};
 
 export const userService = {
   getCurrentUser: async (): Promise<User | null> => {
@@ -49,13 +20,31 @@ export const userService = {
     if (!authUser) return null;
 
     const role = await getUserRole(authUser.id);
-    const tier = await readMockTier();
+
+    // Query real subscription from Supabase
+    const { data: subRow } = await supabase
+      .from('subscriptions')
+      .select('tier, status, current_period_end, created_at')
+      .eq('user_id', authUser.id)
+      .maybeSingle();
+
+    let subscription: Subscription;
+    if (!subRow) {
+      subscription = FREE_SUBSCRIPTION;
+    } else {
+      subscription = {
+        tier: subRow.tier as SubscriptionTier,
+        status: subRow.status === 'active' ? 'active' : 'none',
+        renewal_date: subRow.current_period_end ?? null,
+        started_at: subRow.created_at ?? null,
+      };
+    }
 
     return {
       id: authUser.id,
       email: authUser.email ?? '',
       role: role ?? 'member',
-      subscription: buildSubscription(tier),
+      subscription,
     };
   },
 };
