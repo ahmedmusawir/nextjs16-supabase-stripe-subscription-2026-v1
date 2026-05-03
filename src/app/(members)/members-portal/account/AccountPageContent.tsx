@@ -7,6 +7,7 @@ import Box from "@/components/common/Box";
 import { Button } from "@/components/ui/button";
 import { TierBadge } from "@/components/common/TierBadge";
 import { useToast } from "@/components/ui/use-toast";
+import { Loader2 } from "lucide-react";
 import Link from "next/link";
 import type { SubscriptionTier } from "@/types/subscription";
 import { createClient } from "@/utils/supabase/client";
@@ -61,12 +62,31 @@ const AccountPageContent = () => {
   }, []);
 
   const isFree = currentTier === "free";
+  const [isManaging, setIsManaging] = useState(false);
 
-  const handleManage = () => {
-    toast({
-      title: "Coming soon",
-      description: "Subscription management coming soon",
-    });
+  const handleManage = async () => {
+    setIsManaging(true);
+    try {
+      const response = await fetch("/api/customer-portal", { method: "POST" });
+      const data = await response.json();
+      if (data.redirect_url) {
+        window.location.href = data.redirect_url;
+      } else {
+        toast({
+          title: "Error",
+          description: "Couldn't open subscription management. Please try again.",
+          variant: "destructive",
+        });
+      }
+    } catch {
+      toast({
+        title: "Error",
+        description: "Couldn't open subscription management. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsManaging(false);
+    }
   };
 
   if (isLoading) {
@@ -144,7 +164,16 @@ const AccountPageContent = () => {
               </Button>
             ) : (
               <>
-                <Button onClick={handleManage} className="bg-violet-600 hover:bg-violet-700 text-white border border-violet-700 dark:bg-violet-500 dark:hover:bg-violet-600 dark:border-violet-400">Manage Subscription</Button>
+                <Button onClick={handleManage} disabled={isManaging} className="bg-violet-600 hover:bg-violet-700 text-white border border-violet-700 dark:bg-violet-500 dark:hover:bg-violet-600 dark:border-violet-400">
+                  {isManaging ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Opening...
+                    </>
+                  ) : (
+                    "Manage Subscription"
+                  )}
+                </Button>
                 <Button asChild variant="outline" className="border border-violet-300 dark:border-violet-500 text-violet-600 dark:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-950">
                   <Link href="/pricing">Change Plan</Link>
                 </Button>

@@ -1,156 +1,314 @@
 # StarkReads
 
-**Subscription-gated content platform prototype** built on Next.js 15, Supabase, and Stripe.
+> **Subscription-gated content platform.** Next.js 16 (App Router) + Supabase (Auth + Postgres) + Stripe (Subscriptions + Customer Portal).
+> Built as a portfolio reference for production-grade subscription architecture.
 
-Part of the **AI App Factory** by Stark Industries.
-
----
-
-## What Is This?
-
-StarkReads is a subscription-based content platform where users pay for tiered access to premium articles. Think Substack meets Medium, with proper tier gating.
-
-**Current state:** Frontend-first prototype with mock data. No live Stripe or Supabase integration yet — everything runs off local mock services and a Zustand dev store for tier switching.
-
-### Live Routes (30 total)
-
-| Route | Access | Description |
-|-------|--------|-------------|
-| `/` | Public | Hero page with recent articles + pricing teaser |
-| `/articles` | Public | Full article index with tier badges |
-| `/articles/[slug]` | Public | Article detail with paywall for gated content |
-| `/pricing` | Public | 3-column pricing page (Starter / Pro / Enterprise) |
-| `/auth` | Public | Login + Register with `?next=` redirect support |
-| `/members-portal` | Members | Dashboard with subscription summary |
-| `/members-portal/account` | Members | Profile + subscription management |
-| `/members-portal/starter` | Starter+ | Starter-tier gated content |
-| `/members-portal/pro` | Pro+ | Pro-tier gated content |
-| `/members-portal/enterprise` | Enterprise | Enterprise-tier gated content |
-| `/subscribe/success` | Members | Post-checkout confirmation with `?next=` |
-| `/admin-portal` | Admin | Admin dashboard (from starter kit) |
-| `/superadmin-portal` | Superadmin | Superadmin dashboard (from starter kit) |
+![tests](https://img.shields.io/badge/tests-136%20passing-brightgreen)
+![unit](https://img.shields.io/badge/unit-105-blue)
+![integration](https://img.shields.io/badge/integration-13-blue)
+![e2e](https://img.shields.io/badge/e2e-18-blue)
+![tsc](https://img.shields.io/badge/tsc-clean-brightgreen)
+![next](https://img.shields.io/badge/Next.js-16-black)
+![ts](https://img.shields.io/badge/TypeScript-5-blue)
+![stripe](https://img.shields.io/badge/Stripe-22-635bff)
+![supabase](https://img.shields.io/badge/Supabase-Postgres-3ecf8e)
 
 ---
 
-## Tech Stack
+## What this is
+
+StarkReads is a **multi-tier subscription platform** for premium content (think Substack-meets-Medium with strict tier gating). It demonstrates the full lifecycle of a SaaS subscription system:
+
+- A four-tier model (`free` → `starter` → `pro` → `enterprise`) with cumulative access
+- Real Stripe Checkout, webhooks, and Customer Portal integration
+- Supabase Auth + RLS-protected Postgres tables
+- Server/client boundary discipline that lets the entire UI be built before any backend work, then swap in real backends without touching components
+- A deliberate four-layer testing strategy (unit + integration + E2E + manual) — **136 tests, all green**
+
+> **Status:** Phase 2 (Backend Integration) complete. Real Stripe + Supabase backends. Test coverage at all layers. Ready for production deploy.
+
+---
+
+## Screenshots
+
+> *Screenshots to be added — placeholder section.*
+
+```
+[ Hero / homepage ]
+[ Pricing page ]
+[ Members portal — Pro tier ]
+[ Account page with Stripe Portal button ]
+[ Paywall on a Pro article ]
+```
+
+---
+
+## Key features
+
+- 🔐 **Auth** — Supabase Auth with cookie-based sessions, RLS-aware queries
+- 👮 **RBAC** — `superadmin` / `admin` / `member` roles, enforced via layouts + server actions
+- 💳 **Subscriptions** — Stripe-hosted Checkout for first-time, in-place `subscriptions.update` for upgrades (no double-billing)
+- 🪝 **Webhooks** — signature verification, idempotent UPSERT, handles 3 critical event types, always returns 200 to prevent Stripe retries
+- 🚪 **Tier gating** — `requireSubscriptionTier()` server-side gate; cumulative `meetsTier()` check
+- 🛒 **Customer Portal** — full Stripe-hosted billing self-service (payment method, cancellation, invoices)
+- ⚡ **Stripe-truth, Supabase-cache pattern** — Stripe owns billing state; Supabase mirrors what the app reads
+- 🧪 **Four layers of tests** — pure functions, mocked-SDK integration, real-browser E2E, manual sandbox flow
+- 📐 **Server/client boundary** — Turbopack-enforced split between server-only services and client-safe wrappers
+- 🌗 **next-themes** light / dark mode
+
+---
+
+## Architecture overview
+
+```
+┌──────────────────┐    ┌──────────────────────────────┐    ┌────────────────┐
+│      Browser     │    │       Next.js 16 Server       │    │     Stripe     │
+│                  │    │                               │    │                │
+│  Server Comps    │    │   Pages (Server Components)   │    │  Customers     │
+│  + Client Comps  │◀──▶│   + API routes                │◀──▶│  Subscriptions │
+│  + Zustand auth  │    │   + Service layer             │    │  Checkout      │
+│  store           │    │   + Stripe singleton          │    │  Portal        │
+│                  │    │                               │    │  Webhooks ─────┤
+└────────┬─────────┘    └───────────────┬───────────────┘    └────────────────┘
+         │                              │                              │
+         │                              ▼                              │
+         │                      ┌────────────────┐                     │
+         └─────fetch───────────▶│   Supabase     │◀──────UPSERT───────┘
+                                │   Auth + DB    │   (via webhook)
+                                │   user_roles   │
+                                │   profiles     │
+                                │   subscriptions│
+                                └────────────────┘
+```
+
+For the full architecture, including the **three-system model** (Auth + RBAC + Tiers as orthogonal concerns), data-flow diagrams, and the Stripe-truth/Supabase-cache pattern, see **[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)**.
+
+---
+
+## Tech stack
 
 | Layer | Technology |
 |-------|-----------|
-| Framework | Next.js 15 (App Router) |
-| Language | TypeScript |
-| Styling | Tailwind CSS + ShadCN/UI |
-| State | Zustand (persisted dev store) |
-| Auth | Supabase Auth |
-| Database | Supabase (Postgres) |
-| Payments | Stripe (planned) |
-| Testing | Jest — 81 tests |
-| Icons | Lucide React |
+| Framework | Next.js 16 (App Router) |
+| Language | TypeScript 5 |
+| Styling | Tailwind CSS 3.4 + Sass |
+| UI primitives | ShadCN/UI (Radix) |
+| State (client) | Zustand 4 (with `persist`) |
+| Forms | React Hook Form + Zod |
+| Auth | Supabase Auth (`@supabase/ssr`) |
+| Database | Supabase Postgres (RLS) |
+| Payments | Stripe 22 (Subscriptions + Customer Portal) |
+| Testing (unit/integration) | Jest 30 + ts-jest |
+| Testing (E2E) | Playwright 1.59 (Chromium) |
+| Theming | next-themes |
 
 ---
 
-## Getting Started
+## Quick start
+
+### Prerequisites
+
+- Node 20+
+- A Supabase project (free tier is fine)
+- A Stripe account (Test mode)
+- The Stripe CLI ([install](https://stripe.com/docs/stripe-cli))
+
+### Install
 
 ```bash
-# Install dependencies
+git clone <repo-url>
+cd nextjs16-supabase-stripe-subscription-2026-v1
 npm install
-
-# Set up environment
-cp .env.example .env.local
-# Fill in your Supabase keys
-
-# Run dev server
-npm run dev
-
-# Run tests
-npm test
-
-# Production build
-npm run build
 ```
 
-### Dev Tier Switcher
+### Configure environment
 
-A floating widget appears in the bottom-right corner during development. Use it to switch between subscription tiers (Free / Starter / Pro / Enterprise) without needing real Stripe integration. State persists across page refreshes via Zustand.
+```bash
+cp .env.example .env.local       # if .env.example exists; otherwise create from docs/DEPLOYMENT.md § 3
+# fill in:
+#   NEXT_PUBLIC_SUPABASE_URL
+#   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+#   SUPABASE_SECRET_KEY
+#   STRIPE_SECRET_KEY
+#   STRIPE_WEBHOOK_SECRET
+#   STRIPE_PRICE_STARTER / _PRO / _ENTERPRISE
+#   NEXT_PUBLIC_SITE_URL
+#   NEXT_PUBLIC_API_BASE_URL
+```
+
+### Set up Supabase schema
+
+In the Supabase SQL Editor, run **`supabase/setup.sql`** (creates `app_role`, `user_roles`, `profiles`, trigger).
+
+Then create the `subscriptions` table — see **[`docs/DATABASE_SCHEMA.md § 6`](docs/DATABASE_SCHEMA.md#6-migration-sql)**.
+
+Then promote your first user to `superadmin` (instructions at the end of `supabase/setup.sql`).
+
+### Set up Stripe
+
+In Stripe Dashboard (Test mode):
+1. Create three Products: `Starter` ($5/mo), `Pro` ($15/mo), `Enterprise` ($49/mo)
+2. Copy the Price IDs into `.env.local` as `STRIPE_PRICE_*`
+3. Configure the Customer Portal: Settings → Billing → Customer Portal
+
+### Run
+
+```bash
+npm run dev                                 # http://localhost:3000
+
+# In a second terminal — only when testing Stripe flows:
+./scripts/start_stripe_webhook.sh
+# Copy the whsec_… into .env.local as STRIPE_WEBHOOK_SECRET, restart dev
+```
+
+### Run tests
+
+```bash
+./scripts/run_unit_tests.sh                 # 118 Jest tests, ~3s
+./scripts/run_stripe_integration_test.sh    # 13 integration tests, ~0.8s
+./scripts/run_e2e_tests.sh                  # 18 Playwright tests, ~40s
+```
+
+For deeper instructions, see **[`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)**.
 
 ---
 
-## Project Structure
+## Project structure
 
 ```
-src/
-  app/
-    (public)/          # Public pages — home, articles, pricing
-    (auth)/            # Auth pages — login, register
-    (members)/         # Member pages — portal, account, tier content, subscribe
-    (admin)/           # Admin pages (from starter kit)
-    (superadmin)/      # Superadmin pages (from starter kit)
-  components/
-    articles/          # ArticleCard, Paywall
-    subscriptions/     # PlanCard
-    common/            # TierBadge, DevTierToggle, SpinnerLarge, Page, Row, Box
-    global/            # Navbar, NavbarHome
-    layout/            # Sidebar
-    auth/              # LoginForm, RegisterForm
-    ui/                # ShadCN primitives
-  types/               # TypeScript interfaces — subscription, article, user
-  mocks/               # Mock data — plans, articles, users
-  lib/                 # Helpers — tiers, safeRedirect, requireSubscriptionTier
-  store/               # Zustand stores
-  services/            # Mock service layer — subscription, article, user
+.
+├── src/
+│   ├── app/                          # App Router pages + API
+│   │   ├── (auth)/                   # /auth — login + register
+│   │   ├── (public)/                 # / — home, articles, pricing, demo
+│   │   ├── (members)/                # /members-portal/* — gated content + account + subscribe success
+│   │   ├── (admin)/                  # /admin-portal — admin user CRUD
+│   │   ├── (superadmin)/             # /superadmin-portal
+│   │   └── api/
+│   │       ├── auth/                 # login, signup, logout, confirm, superadmin-add-user
+│   │       ├── checkout/             # POST — Stripe Checkout / upgrade
+│   │       ├── customer-portal/      # POST — Stripe Billing Portal
+│   │       └── webhooks/stripe/      # POST — Stripe webhook receiver
+│   ├── components/                   # UI components (ShadCN, articles, subscriptions, layouts)
+│   ├── services/                     # subscriptionService, userService, checkoutService, articleService
+│   ├── lib/
+│   │   ├── tiers.ts                  # meetsTier, tierDisplayName
+│   │   ├── auth/requireSubscriptionTier.ts
+│   │   ├── stripe/{stripe,tierResolver}.ts
+│   │   └── safeRedirect.ts
+│   ├── types/                        # SubscriptionTier, TIER_LEVELS, Subscription, Plan, User, Article
+│   ├── utils/supabase/               # server.ts, admin.ts, client.ts, middleware.ts
+│   └── store/                        # useAuthStore (Zustand)
+├── e2e/                              # Playwright specs + helpers
+├── scripts/                          # Shell wrappers (run_*_tests.sh, start_stripe_webhook.sh)
+├── supabase/
+│   └── setup.sql                     # RBAC schema migration
+├── docs/                             # Project documentation (this README + 8 deep-dive docs)
+├── agent_docs/                       # Factory specs (APP_BRIEF, DATA_CONTRACT, FILE_TREE, UI_SPEC)
+└── package.json
 ```
+
+For every file with one-line purpose + server/client flag, see **[`docs/FILE_REFERENCE.md`](docs/FILE_REFERENCE.md)**.
 
 ---
 
-## Subscription Tiers
+## Testing
 
-| Tier | Price | Access |
-|------|-------|--------|
-| Free | $0 | Public articles only |
-| Starter | $9/mo | Starter content + all free content |
-| Pro | $29/mo | Pro + Starter content |
-| Enterprise | $99/mo | Everything |
+136 tests across three automated layers + manual sandbox flow:
 
-Tier gating uses cumulative access — higher tiers include all lower-tier content. Enforced via `meetsTier()` in `src/lib/tiers.ts` and `requireSubscriptionTier()` server-side gate.
+| Layer | Tests | Time | Command |
+|-------|-------|------|---------|
+| Unit (Jest) | 105 | ~2.9s | `./scripts/run_unit_tests.sh` |
+| Integration (Jest, mocked SDK) | 13 | ~0.83s | `./scripts/run_stripe_integration_test.sh` |
+| E2E (Playwright) | 18 | ~38.5s | `./scripts/run_e2e_tests.sh` |
+| **Total** | **136** | **~45s** | (run all) |
+
+**Coverage highlights:**
+- All 16 `meetsTier(current, required)` combinations exhaustively tested
+- All 3 Stripe routes mocked-tested at integration level (auth paths, validation paths, success paths)
+- All 6 webhook events scenarios (sig missing, sig invalid, 3 event handlers, unknown)
+- Real-browser tier-hierarchy enforcement (Starter, Pro, Enterprise users)
+
+For the four-layer strategy, mock patterns, and gotchas, see **[`docs/TESTING.md`](docs/TESTING.md)**.
+
+---
+
+## API reference
+
+| Route | Method | Purpose |
+|-------|--------|---------|
+| `/api/checkout` | POST | Create Stripe Checkout Session OR update existing sub (upgrade) |
+| `/api/customer-portal` | POST | Create Stripe Customer Portal session |
+| `/api/webhooks/stripe` | POST | Receive + process Stripe webhook events |
+| `/api/auth/login` | POST | Email/password login |
+| `/api/auth/signup` | POST | User registration |
+| `/api/auth/logout` | POST | Logout |
+| `/api/auth/confirm` | GET | Email confirmation callback |
+| `/api/auth/superadmin-add-user` | POST | Programmatic user creation (superadmin) |
+
+For request/response shapes, error codes, curl examples, and flow diagrams, see **[`docs/API_REFERENCE.md`](docs/API_REFERENCE.md)**.
+
+---
+
+## Deployment
+
+The recommended path is GCP Cloud Run with Secret Manager for sensitive env vars:
+
+1. **Local setup** — `docs/DEPLOYMENT.md § 2`
+2. **Stripe Sandbox** — `docs/DEPLOYMENT.md § 4`
+3. **Supabase schema** — `docs/DEPLOYMENT.md § 5`
+4. **Cloud Run + Dockerfile** — `docs/DEPLOYMENT.md § 6`
+5. **Secret Manager mapping** — `docs/DEPLOYMENT.md § 7`
+6. **Webhook registration** — `docs/DEPLOYMENT.md § 8`
+7. **Post-deploy checklist** — `docs/DEPLOYMENT.md § 9`
+8. **Troubleshooting** — `docs/DEPLOYMENT.md § 10`
+
+See **[`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)**.
 
 ---
 
 ## Documentation
 
-| Doc | Location | Description |
-|-----|----------|-------------|
-| Changelogs | [`docs/change_logs/`](docs/change_logs/) | Dated changelog files for every session |
-| Starter Kit Docs | [`docs/STARTER KIT DOCS/`](docs/STARTER%20KIT%20DOCS/) | Architecture, auth, authorization, database, testing |
-| App Specs | [`agent_docs/CURRENT_APP/`](agent_docs/CURRENT_APP/) | APP_BRIEF, DATA_CONTRACT, FILE_TREE, UI_SPEC |
-| Factory Playbooks | [`agent_docs/APP_FACTORY/`](agent_docs/APP_FACTORY/) | Build playbooks and manuals |
-| Session Logs | Project root | `session_YYYY-MM-DD.md` — detailed build logs |
-| Recovery State | [`RECOVERY.md`](RECOVERY.md) | 3-second context recovery doc |
+| Document | Description |
+|----------|-------------|
+| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | System overview, three-system model, data flows, Stripe-truth/Supabase-cache pattern, server/client boundary, env-var architecture |
+| [`docs/API_REFERENCE.md`](docs/API_REFERENCE.md) | All API routes with request/response, error codes, curl examples, flow diagrams |
+| [`docs/DATABASE_SCHEMA.md`](docs/DATABASE_SCHEMA.md) | Tables, RLS policies, two-clients pattern, ER diagram, migration SQL, indexes |
+| [`docs/SUBSCRIPTION_SYSTEM.md`](docs/SUBSCRIPTION_SYSTEM.md) | Tier model, gate helpers, Stripe object map, checkout/webhook flows, double-sub bug fix history, Phase 3 roadmap |
+| [`docs/TESTING.md`](docs/TESTING.md) | Four-layer strategy, coverage matrix, run commands, mock patterns, gotchas |
+| [`docs/TESTING_RECON.md`](docs/TESTING_RECON.md) | Architect-level raw inventory and verbatim code samples |
+| [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) | Local + GCP Cloud Run setup, Secret Manager, webhook registration, troubleshooting |
+| [`docs/FILE_REFERENCE.md`](docs/FILE_REFERENCE.md) | Every file in the project with purpose + server/client flag |
+| [`docs/DEVELOPMENT_GUIDE.md`](docs/DEVELOPMENT_GUIDE.md) | Day-to-day recipes (add tier, gated page, debug webhook, etc.) |
 
-### Changelogs
-
-- [2026-04-15](docs/change_logs/changelog_2026-04-15.md) — Full prototype build (Gates 1-3): types, mocks, services, components, all pages
-- [2026-04-16](docs/change_logs/changelog_2026-04-16.md) — Loading spinners + button styling polish
-
----
-
-## Build Status
-
-| Check | Status |
-|-------|--------|
-| TypeScript | Clean |
-| Tests | 81/81 passing |
-| Build | Clean — 30 routes |
-| Loading States | 20/20 routes covered |
+Factory specs and product source-of-truth live in [`agent_docs/`](agent_docs/).
 
 ---
 
-## What's Next
+## What's next (Phase 3 roadmap)
 
-- [ ] Stripe integration (real checkout flow)
-- [ ] Supabase subscription table + RLS policies
-- [ ] Real article CMS (replace mock data)
-- [ ] Test coverage for StarkReads features
-- [ ] Email notifications on subscription events
+- 📧 Email notifications on key webhook events (Resend / SendGrid)
+- 💸 Dunning + failed payment recovery (handle `invoice.payment_failed`)
+- 🎁 Trials (`trial_period_days` on Checkout Session)
+- 📅 Annual billing intervals (toggle on PlanCard)
+- 🎟️ Coupons + promo codes
+- 🏢 Team / multi-user subscriptions (organizations table)
+- 📚 Article CMS (replace hardcoded array — Supabase or external)
+- 🚨 Webhook delivery monitoring + alerting (audit table + backlog page)
+
+See **[`docs/SUBSCRIPTION_SYSTEM.md § 11`](docs/SUBSCRIPTION_SYSTEM.md#11-whats-deferred-to-phase-3)** for full deferred list.
 
 ---
 
-*Built with the AI App Factory pipeline. Powered by Claude Code.*
+## License
+
+Internal Stark Industries project. License TBD.
+
+---
+
+## Author
+
+**Tony Stark** — Stark Industries / AI App Factory
+Built with [Claude Code](https://claude.com/claude-code) under Tony's architectural direction.
+
+> *"Sometimes you gotta run before you can walk."*

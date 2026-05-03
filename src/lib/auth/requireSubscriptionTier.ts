@@ -12,8 +12,6 @@ import { userService } from '@/services/userService';
  * If user's tier is below required → redirect to /pricing?next=<currentPath>
  * If tier check passes → returns the User object for use in the page
  *
- * In v1 (prototype): reads mock tier from `dev_mock_tier` cookie.
- * In Phase 2: reads real subscription from Supabase.
  *
  * @param required - Minimum tier needed to access this route
  * @param currentPath - The current route path (for ?next= redirect chain)
