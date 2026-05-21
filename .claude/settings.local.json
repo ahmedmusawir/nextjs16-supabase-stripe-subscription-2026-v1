@@ -11,7 +11,9 @@
       "Bash(npm --version)",
       "Bash(npm audit *)",
       "Bash(npm ls *)",
-      "Bash(npm view *)"
+      "Bash(npm view *)",
+      "Bash(tee /tmp/audit-fix-dryrun-2026-05-21.log)",
+      "Read(//tmp/**)"
     ]
   }
 }
