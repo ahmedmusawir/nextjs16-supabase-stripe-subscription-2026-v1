@@ -1,6 +1,6 @@
 # Workflow 01 — Baseline Capture (Phase 0)
 
-> Capture the starting vulnerability profile. Read-only — `npm audit` reports state, does not change it.
+> Capture the starting vulnerability profile. **Lockfile-only — `npm audit` runs against `package-lock.json` and does NOT require `node_modules` to be installed.** Per family doctrine §4.10 (Lockfile-First Audit), no install happens until Phase 06 Step 1.
 
 ---
 
@@ -8,7 +8,7 @@
 
 Read-only per family doctrine. No operator approval needed for the command itself; just present it for the operator to run.
 
-> "Generating the baseline audit command. Please paste this in your terminal at the repo root and share the output:
+> "Generating the baseline audit command. Per §4.10 this is purely lockfile-driven — works fine even if `node_modules` is not installed. Please run at the repo root and share the output:
 >
 > ```bash
 > npm audit
@@ -123,7 +123,7 @@ Per family doctrine Section 4.1, even writing to a session log is a state change
 
 | Symptom | Likely Cause | Action |
 |---|---|---|
-| `npm audit` reports 0 vulns but `package-lock.json` is stale | Lockfile out of sync with package.json | Regenerate lockfile (`rm package-lock.json && npm install`) with approval, re-baseline |
+| `npm audit` reports 0 vulns but `package-lock.json` is stale | Lockfile out of sync with package.json | Regenerate lockfile with `npm install --package-lock-only` (per §4.10 — still no `node_modules` touch) with approval, re-baseline |
 | Many vulns in one transitive dep, all from same parent | Single upstream issue cascading | Note for Phase 2 — likely an OVERRIDE candidate |
 | Audit hangs / timeouts | Network issue, npm registry slow | Retry; if persistent, surface to operator |
 | Output reports "found 0 vulnerabilities" but `--json` shows entries | Severity threshold mismatch | Use `--json` for ground truth; plain text may filter LOW |

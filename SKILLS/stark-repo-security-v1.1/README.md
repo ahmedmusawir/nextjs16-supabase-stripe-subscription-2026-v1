@@ -240,7 +240,7 @@ A future sibling skill (`dep-add-threat-check/`, planned per the roadmap below) 
 
 ## Version History
 
-See `CLAUDE.md` §8 for the full version table. Current: **v1.1** (2026-05-19) — added `threat-landscape-check` as a first-class child skill and reordered the activation matrix to put threat research first.
+See `CLAUDE.md` §8 for the full version table. Current: **v1.2** (2026-05-21) — added §4.10 (Lockfile-First Audit) as a hard rule. The audit walks Phases 01-05 lockfile-only; `npm ci` is deferred to Phase 06 Step 1. Rationale: post-Mini-Shai-Hulud (May 2026) npm threat landscape — defer tarball fetches from the registry CDN until the lockfile is verified clean.
 
 ---
 

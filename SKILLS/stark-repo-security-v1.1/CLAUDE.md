@@ -239,6 +239,40 @@ The skill modifies files only when explicitly instructed to author or refactor t
 
 Skill-modifying instructions are explicit: "update the PLAYBOOK reference," "fix the template," "bump the skill version." Anything else operating against project files only.
 
+### 4.10 Lockfile-First Audit (Hard Rule, Added v1.2)
+
+**The audit walks lockfile-only changes through Phases 01-05.** `node_modules` is NOT touched (no `npm install`, no `npm ci`) until Phase 06 Step 1. All vuln-fix operations use the `--package-lock-only` flag where applicable, which modifies `package-lock.json` without downloading or installing tarballs.
+
+This rule is severe enough to live at family doctrine level, not buried inside the audit skill.
+
+**Why this matters:** The May 2026 npm threat landscape (Mini Shai-Hulud, TanStack, node-ipc, Axios) repeatedly demonstrated that even pinned versions can be compromised — attackers replace tarballs at the registry CDN level for already-published versions. Every avoidable tarball fetch reduces attack surface. The audit's job is to verify the lockfile is clean; pulling tarballs before that verification inverts the security posture.
+
+**The principle:**
+
+1. Establish baseline vuln profile (`npm audit`) **before** any install.
+2. Fix all known vulns at the lockfile level (`npm audit fix --package-lock-only`, `npm install <pkg>@<ver> --package-lock-only`, manual lockfile edits for overrides).
+3. Re-verify lockfile is clean (`npm audit`) — still no install.
+4. Install once at Phase 06 Step 1, from the verified-clean lockfile (`npm ci`).
+5. Verify build + tests — if anything regresses, surface for triage.
+
+**Commands that respect `--package-lock-only` (use in Phases 01-05):**
+
+- `npm audit` (works against lockfile alone — no flag needed)
+- `npm audit fix --package-lock-only`
+- `npm install <pkg>@<version> --package-lock-only`
+- `npm install --save <pkg> --package-lock-only`
+- `npm uninstall <pkg> --package-lock-only`
+- `npm ls <pkg> --package-lock-only` (npm 7+)
+
+**Commands that DO NOT respect `--package-lock-only` (defer to Phase 06):**
+
+- `npm ci`
+- `npm install` (no `--package-lock-only` — would install)
+- `npm run build`
+- `npm test`
+
+**Operator override:** Per §4.8, the operator may legitimately need an install mid-audit (e.g., to build-verify a risky Phase 04 decision before continuing). Acknowledge, name §4.10, state the failure mode (`tarball-fetch before lockfile verified clean`), ask explicit confirmation.
+
 ---
 
 ## 5. Reading Order — Family Orchestration
@@ -411,6 +445,7 @@ Until the path's criteria are confirmed, the session does NOT declare complete. 
 |---------|------|--------|
 | 1.0 | 2026-05-18 | Initial bundle release. Seeded from Dockbloxx audit experience (Sept 2025 onward). Two child skills implemented: `repo-security-audit` and `repo-security-findings-tracker`. Placeholder reserved for `pre-install-threat-check/` in Path D of the activation fork. Three-repo promotion procedure preserved in PLAYBOOK reference only — not promoted to its own skill, as it's specific to Dockbloxx-shaped topologies and not a recurring workflow for Supabase + Vercel projects. Family-level doctrine consolidated per APP_FACTORY_SKILLS_PLAYBOOK pattern — child skills are methodology only, no doctrine duplication. |
 | 1.1 | 2026-05-19 | Promoted threat-landscape check from placeholder to first-class child skill. Renamed `pre-install-threat-check/` → `threat-landscape-check/` to reflect its true nature (pure research, not install workflow). Mode for v1.1: repo-wide scan of `package.json` direct deps. Output levels offered to operator at intake (Tight / Standard / Thorough). FIRST QUESTION reordered to put threat-research first (matches the natural dependency lifecycle: research → audit → findings). Activation Decision Matrix relabeled (was: A audit / B finding / C status / D placeholder. Now: A threat-check / B audit / C finding / D status). Audit path (B) now recommends a recent threat-check before proceeding. README.md added at bundle root for sharing with other Architects. **Future Roadmap (recorded for posterity):** (a) `dep-add-threat-check/` — sibling skill for single-package research before adding a new lib mid-development, activated by project-root CLAUDE.md reflex on dependency-add intent; (b) `threat-monitor` — continuous monitoring infrastructure with Slack/GitHub reporting, NOT a Stark Skill (infrastructure, separate effort). |
+| 1.2 | 2026-05-21 | Added §4.10 (Lockfile-First Audit) as a hard rule. The audit walks Phases 01-05 **lockfile-only**; `node_modules` install (`npm ci`) happens exactly once at Phase 06 Step 1. Rationale: post-Mini-Shai-Hulud npm threat landscape — defer tarball fetches from the registry CDN until the lockfile is verified clean. Restructured `repo-security-audit/SKILL.md`, `workflow/01-baseline.md`, `workflow/02-safe-wins.md`, `workflow/03-triage.md`, `workflow/04-execute.md`, `workflow/06-re-baseline.md` to walk the lockfile-first flow with `--package-lock-only` flags throughout. Build/test verification consolidated at Phase 06. Triggered by operator (Tony Stark) override during first-ever audit run (Cyber Pharma SaaS — `nextjs16-supabase-stripe-subscription-2026-v1`, 2026-05-21) where `node_modules` was uninstalled and operator's principle was: "audit first, fix all the stuff in the audit first before any install." |
 
 ---
 

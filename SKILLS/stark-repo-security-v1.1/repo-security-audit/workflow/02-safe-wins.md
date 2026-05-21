@@ -1,6 +1,6 @@
 # Workflow 02 — Safe Wins (Phase 1)
 
-> Apply `npm audit fix` to soak up the safe, non-breaking patches. NEVER `--force` per family doctrine Section 4.2. State-change phase — requires operator APPROVED before execution.
+> Apply `npm audit fix --package-lock-only` to patch the lockfile for safe, non-breaking fixes. Per family doctrine §4.10 (Lockfile-First Audit), this phase **does not touch `node_modules`** — only `package-lock.json` is modified. NEVER `--force` per family doctrine §4.2. State-change phase (lockfile-only) — requires operator APPROVED before execution.
 
 ---
 
@@ -8,32 +8,32 @@
 
 Before any state change, see what npm wants to do.
 
-> "Phase 1 — Safe Wins. Per family doctrine Section 4.1, even `npm audit fix` is a state change and requires approval. First, the read-only dry-run to preview:
+> "Phase 1 — Safe Wins. Per family doctrine §4.1, even a lockfile-only fix is a state change and requires approval. First, the read-only dry-run to preview (with `--package-lock-only` per §4.10):
 >
 > ```bash
-> npm audit fix --dry-run 2>&1 | tee /tmp/audit-fix-dryrun.log
+> npm audit fix --package-lock-only --dry-run 2>&1 | tee /tmp/audit-fix-dryrun.log
 > ```
 >
 > Paste the output — I'll read it back and flag any concerns before we approve the real run."
 
 After the operator pastes the dry-run output:
 
-- Count: how many vulns will be auto-fixed?
+- Count: how many vulns will be auto-fixed in the lockfile?
 - Risk: any unexpected upgrades? Framework changes? Major version jumps?
 
 Report:
 
 > "Dry-run results:
 > - Auto-fix will resolve: [N] vulnerabilities
-> - Deps to be updated: [list]
+> - Deps to be updated in lockfile: [list]
 > - Major version jumps detected: [list or 'none']
 > - Framework changes: [list or 'none']
 >
-> [If clean] Recommendation: APPROVE the real run. Generates safe patches only, no breaking changes.
+> [If clean] Recommendation: APPROVE the real run. Modifies `package-lock.json` only; safe patches only, no breaking changes. `node_modules` untouched.
 >
 > [If concerns] CONCERNS: [list]. Recommend stopping here and triaging in Phase 2 instead of letting auto-fix run.
 >
-> Approve the real `npm audit fix` (no --force)? Or skip Phase 1 and go straight to Phase 2 manual triage?"
+> Approve the real `npm audit fix --package-lock-only` (no --force)? Or skip Phase 1 and go straight to Phase 2 manual triage?"
 
 ---
 
@@ -44,10 +44,10 @@ If operator APPROVED:
 > "Run this in your terminal:
 >
 > ```bash
-> npm audit fix
+> npm audit fix --package-lock-only
 > ```
 >
-> Paste the output when done. Then we'll re-audit to see what remains."
+> Paste the output when done. Then we'll re-audit (still lockfile-only) to see what remains."
 
 ---
 
@@ -79,40 +79,27 @@ Parse the new vuln profile:
 
 Per Principle P6 (Quantify Beyond Vuln Count), the headline tally isn't the only metric. Check whether any of the now-resolved vulns eliminated multiple advisories at once:
 
-> "Generate this for accurate impact measurement:
+> "Generate this for accurate impact measurement (lockfile-only per §4.10):
 >
 > ```bash
-> npm ls --depth=0 2>&1 | head -50
+> npm ls --depth=0 --package-lock-only 2>&1 | head -50
 > ```
 >
 > If a dep was removed entirely by audit fix, the CVE-advisory-count eliminated may be larger than the headline vuln reduction. I'll note in the session log."
 
 ---
 
-## Step 5 — Verify Build Still Works
+## Step 5 — Build Verification (Deferred per §4.10)
 
-CRITICAL: even safe wins can occasionally break a build. Verify before moving on.
+**Lockfile-first principle (§4.10):** build verification does NOT happen here. The lockfile changes from Phase 1 are not yet installed (no `node_modules` touch). All build + test verification consolidates at Phase 06 Step 2 / Step 3, after `npm ci` installs from the verified-clean lockfile.
 
-> "Verify build still passes after the Phase 1 changes:
->
-> ```bash
-> npm run build
-> ```
->
-> Paste the result — success or first error."
+Rollback semantics still apply: if a later phase reveals the Phase 1 fix was problematic (e.g., introduces a peer-dep conflict surfaced at Phase 06 install), revert via:
 
-If build fails:
-- EVIDENCE: report the failure
-- Recommend rolling back Phase 1 changes:
-  ```bash
-  git checkout package.json package-lock.json
-  npm ci
-  ```
-- Skip directly to Phase 2 for manual triage
+```bash
+git checkout package.json package-lock.json
+```
 
-If build passes:
-- EVIDENCE: build green, Phase 1 fix did not regress.
-- Proceed.
+No `npm ci` rollback needed — nothing was installed.
 
 ---
 
@@ -123,12 +110,12 @@ Generate the Phase 1 snippet for operator to append to the session log:
 > "Append to `agent_docs/sessions/session_YYYY-MM-DD.md`:
 >
 > ```markdown
-> ### Phase 1 Safe Wins
-> - `npm audit fix` ran (no --force)
-> - Vulns resolved: [N]
-> - Vulns remaining: [N]
-> - Build verification: PASS / FAIL
-> - Deps changed: [list]
+> ### Phase 1 Safe Wins (lockfile-only per §4.10)
+> - `npm audit fix --package-lock-only` ran (no --force)
+> - Lockfile-level vulns resolved: [N]
+> - Lockfile-level vulns remaining: [N]
+> - Deps changed in lockfile: [list]
+> - Build/test verification: deferred to Phase 06 (no node_modules installed yet)
 > ```
 >
 > Save it, then we proceed to Phase 2 — the critical triage phase."

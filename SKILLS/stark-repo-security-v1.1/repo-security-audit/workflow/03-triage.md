@@ -45,16 +45,31 @@ grep -rn --include="*.test.*" --include="*.spec.*" "<DEP>" . | grep -v node_modu
 
 ## Step 3 — Direct vs Transitive (P3)
 
-Generate the direct/transitive check:
+Generate the direct/transitive check. Per family doctrine §4.10 (Lockfile-First Audit), use `--package-lock-only` to avoid needing `node_modules`:
 
 ```bash
-npm ls <DEP>
+npm ls <DEP> --package-lock-only
 ```
 
-If the output shows the dep at the top level (e.g., `your-project@1.0.0`), it's **direct**.
-If it's nested (e.g., `└── some-parent@x.y.z`), it's **transitive** — investigate the parent.
+If `npm ls` fails or is unclear, fall back to lockfile parsing:
 
-For transitive vulns, run the P3 parent check:
+```bash
+node -e "
+const lock = require('./package-lock.json');
+const pkgs = lock.packages || {};
+const target = '<DEP>';
+const direct = pkgs['node_modules/' + target];
+const instances = Object.keys(pkgs).filter(k => k === 'node_modules/' + target || k.endsWith('/node_modules/' + target));
+console.log('Direct?', !!direct);
+console.log('Total instances:', instances.length);
+instances.forEach(k => console.log('  ' + k + ' → ' + (pkgs[k].version || '')));
+"
+```
+
+If the output shows the dep at the top level (`node_modules/<DEP>`), it's **direct**.
+If only nested (`node_modules/<parent>/node_modules/<DEP>`), it's **transitive** — investigate the parent.
+
+For transitive vulns, run the P3 parent check (no `node_modules` needed — these are registry queries):
 
 ```bash
 # Does the parent's current version pin the vulnerable transitive?

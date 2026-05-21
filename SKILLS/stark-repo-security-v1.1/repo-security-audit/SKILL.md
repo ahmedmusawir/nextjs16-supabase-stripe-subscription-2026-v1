@@ -78,6 +78,10 @@ If approved, the operator pauses the audit, switches to the tracker skill, logs 
 
 Every phase has a verification gate. "Success. No errors." is not verification. Verification is a truth command that confirms repo state. Label every claim EVIDENCE / INFERENCE / CLAIM / GAP / QUESTION.
 
+### Lockfile-First (Family §4.10, Added v1.2)
+
+The audit walks Phases 01-05 **lockfile-only**. `node_modules` install happens exactly once, at Phase 06 Step 1. All vuln-fix commands use `--package-lock-only`. Rationale: post-Mini-Shai-Hulud (May 2026), every avoidable tarball fetch from the npm registry reduces attack surface. See family doctrine §4.10 for full detail and the command reference (which flags respect `--package-lock-only`, which don't).
+
 ## Examples
 
 ### Example 1: Operator Activates The Audit

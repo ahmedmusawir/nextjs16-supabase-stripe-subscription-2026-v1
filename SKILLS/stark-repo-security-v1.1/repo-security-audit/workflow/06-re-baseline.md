@@ -1,12 +1,34 @@
 # Workflow 06 — Re-Baseline (Phase 5)
 
-> Final verification. Confirm the audit achieved its goal: clean repo, clean build, clean tests, all bookkeeping in place. Read-only — just verification commands.
+> Final verification. **This is also where the first (and only) `node_modules` install happens, per family doctrine §4.10 (Lockfile-First Audit).** Confirm the audit achieved its goal: clean lockfile, clean install, clean build, clean tests, all bookkeeping in place.
 
 ---
 
-## Step 1 — Final Audit Confirmation
+## Step 1 — Install From The Verified-Clean Lockfile (§4.10)
 
-> "Phase 5 — final verification. Read-only commands:
+Phases 01-05 walked lockfile-only. Now install for the first time in this audit, from the lockfile we just verified:
+
+> "Phase 5 — final verification. Per §4.10, this is the first (and only) install of the audit. Run from the repo root:
+>
+> ```bash
+> npm ci
+> ```
+>
+> Paste the output. `npm ci` strictly follows `package-lock.json` — no surprises, no version drift. If the lockfile is clean (which Phases 01-05 confirmed), this install pulls only patched versions. ETA: 30-90 seconds depending on dep tree size.
+>
+> State change requires APPROVED."
+
+After APPROVED + paste:
+
+EVIDENCE check:
+- Expected: `added N packages` with no errors, no `npm WARN audit` callouts
+- If install errors (peer-dep conflicts, missing tarballs from registry): STOP — investigate before re-running. May indicate an issue with a Phase 04 decision; roll back via `git checkout package.json package-lock.json` and re-walk the failing decision.
+
+---
+
+## Step 2 — Final Audit Confirmation
+
+> "Confirm `npm audit` is still 0 vulns post-install:
 >
 > ```bash
 > npm audit
@@ -17,11 +39,11 @@
 EVIDENCE check:
 - Expected: `found 0 vulnerabilities`
 - If ACCEPTed vulns documented: expected matches the ACCEPT count
-- If unexpected vulns appear: STOP — something regressed in Phase 3, investigate
+- If unexpected vulns appear: STOP — something shifted on install (rare; could indicate a peer-dep auto-install pulled an unexpected transitive). Investigate.
 
 ---
 
-## Step 2 — Build Verification
+## Step 3 — Build Verification
 
 ```bash
 rm -rf .next  # per G-NPM-2 anti-pattern, force a clean build
@@ -32,7 +54,7 @@ EVIDENCE check: build completes without errors. If using Next.js, verify the `ro
 
 ---
 
-## Step 3 — Test Verification
+## Step 4 — Test Verification
 
 ```bash
 npm test
@@ -43,7 +65,7 @@ EVIDENCE check: tests pass. If tests aren't configured or are out of scope:
 
 ---
 
-## Step 4 — Lockfile Authority Check (P10)
+## Step 5 — Lockfile Authority Check (P10)
 
 Confirm the lockfile is authoritative for downstream environments:
 
@@ -59,7 +81,7 @@ EVIDENCE check:
 
 ---
 
-## Step 5 — Bookkeeping Cross-Check
+## Step 6 — Bookkeeping Cross-Check
 
 Confirm all required artifacts exist:
 
@@ -81,7 +103,7 @@ EVIDENCE check: each location shows today's audit, ledger files exist if finding
 
 ---
 
-## Step 6 — Safety Branch Status
+## Step 7 — Safety Branch Status
 
 ```bash
 git branch --show-current
@@ -96,7 +118,7 @@ EVIDENCE check:
 
 ---
 
-## Step 7 — Final Report
+## Step 8 — Final Report
 
 Present the close-out summary:
 

@@ -8,7 +8,9 @@
       "Bash(command -v node)",
       "Bash(node -e ' *)",
       "WebSearch",
-      "Bash(npm --version)"
+      "Bash(npm --version)",
+      "Bash(npm audit *)",
+      "Bash(npm ls *)"
     ]
   }
 }
