@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git -C /home/moose/nextjs/nextjs16-supabase-stripe-subscription-2026-v1 status --short)",
+      "Bash(git -C /home/moose/nextjs/nextjs16-supabase-stripe-subscription-2026-v1 branch --show-current)",
+      "Bash(git -C /home/moose/nextjs/nextjs16-supabase-stripe-subscription-2026-v1 log --oneline -10)",
+      "Bash(git -C /home/moose/nextjs/nextjs16-supabase-stripe-subscription-2026-v1 branch -a)",
+      "Bash(command -v node)",
+      "Bash(node -e ' *)",
+      "WebSearch",
+      "Bash(npm --version)"
+    ]
+  }
+}
